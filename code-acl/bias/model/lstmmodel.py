@@ -121,8 +121,8 @@ class LSTMModel(nn.Module):
         combined_lstm_out = torch.cat(combined_lstm_out, dim=-1)
         combined_lstm_out, snippet_attn = self.attn(combined_lstm_out, self.attn_score_claim_snippet)
 
-        print(combined_lstm_out.size())
-        exit()
+        # print(combined_lstm_out.size())
+        # my comment
 
         score = self.score(combined_lstm_out)
         return score

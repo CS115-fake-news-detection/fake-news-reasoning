@@ -1,0 +1,9 @@
+.DS_Store
+
+# Ignore dataset & large files
+multi_fc_publicdata
+code-acl/bias/results
+code-acl/bias/results/lstm_claim_and_evidence
+
+# Ignore submodule
+src/hpsklearn
