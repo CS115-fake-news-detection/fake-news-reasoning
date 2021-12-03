@@ -7,6 +7,7 @@ import torch
 import string
 import pandas as pd
 
+
 class MyBertModel(BertPreTrainedModel):
     def __init__(self, config, labelnum, maxlen=200, input_type=CLAIM_ONLY):
 
@@ -34,8 +35,22 @@ class MyBertModel(BertPreTrainedModel):
         lex_path = "model/NRC-Emotion-Intensity-Lexicon-v1.txt"
         df_lex = pd.read_csv(lex_path, sep='\t', index_col=False)
 
-        self.LEXICON = {k:v for (k,v) in zip(df_lex['word'], zip(df_lex['emotion'], df_lex['emotion-intensity-score']))}
-        self.EMOTION_INDICES = {'anger': 0, 'fear': 1, 'joy': 2, 'sadness': 3, 'disgust': 4, 'anticipation': 5, 'trust': 6, 'surprise': 7}
+        self.LEXICON = {
+            k: v
+            for (k, v) in zip(
+                df_lex['word'],
+                zip(df_lex['emotion'], df_lex['emotion-intensity-score']))
+        }
+        self.EMOTION_INDICES = {
+            'anger': 0,
+            'fear': 1,
+            'joy': 2,
+            'sadness': 3,
+            'disgust': 4,
+            'anticipation': 5,
+            'trust': 6,
+            'surprise': 7
+        }
 
         self.init_weights()
 
@@ -50,15 +65,25 @@ class MyBertModel(BertPreTrainedModel):
             raise Exception("Unknown type", self.input_type)
 
     def encode_claims(self, claims):
-        tmp = self.tokenizer(claims, return_tensors='pt', padding=True, truncation=True, max_length=self.maxlen)
+        tmp = self.tokenizer(claims,
+                             return_tensors='pt',
+                             padding=True,
+                             truncation=True,
+                             max_length=self.maxlen)
         input_ids = tmp["input_ids"].to(DEVICE)
         attention_mask = tmp["attention_mask"].to(DEVICE)
 
         return input_ids, attention_mask
 
     def encode_snippets(self, snippets):
-        concat_snippets = [item for sublist in snippets for item in sublist.tolist()]
-        tmp = self.tokenizer(concat_snippets, return_tensors='pt', padding=True, truncation=True, max_length=self.maxlen)
+        concat_snippets = [
+            item for sublist in snippets for item in sublist.tolist()
+        ]
+        tmp = self.tokenizer(concat_snippets,
+                             return_tensors='pt',
+                             padding=True,
+                             truncation=True,
+                             max_length=self.maxlen)
         input_ids = tmp["input_ids"].to(DEVICE)
         token_type_ids = tmp["token_type_ids"].to(DEVICE)
         attention_mask = tmp["attention_mask"].to(DEVICE)
@@ -67,11 +92,18 @@ class MyBertModel(BertPreTrainedModel):
     def encode_snippets_with_claims(self, snippets, claims):
         concat_claims = []
         for claim in claims:
-            concat_claims += [claim]*10
+            concat_claims += [claim] * 10
 
-        concat_snippets = [item for sublist in snippets for item in sublist.tolist()]
+        concat_snippets = [
+            item for sublist in snippets for item in sublist.tolist()
+        ]
 
-        tmp = self.tokenizer(concat_claims, concat_snippets, return_tensors='pt', padding=True, truncation=True, max_length=self.maxlen)
+        tmp = self.tokenizer(concat_claims,
+                             concat_snippets,
+                             return_tensors='pt',
+                             padding=True,
+                             truncation=True,
+                             max_length=self.maxlen)
 
         input_ids = tmp["input_ids"].to(DEVICE)
         token_type_ids = tmp["token_type_ids"].to(DEVICE)
@@ -81,14 +113,21 @@ class MyBertModel(BertPreTrainedModel):
 
     def predict_claim(self, claims):
         claim_input_ids, claim_attn_masks = self.encode_claims(claims)
-        emotion_vector = emocred(claims, 'EMO_INT')
+        emotion_vector = self.emocred(claims, 'EMO_INT')
         emotion_vector = self.emolinear1(emotion_vector)
-        cls = self.bert(claim_input_ids, attention_mask=claim_attn_masks, )[0][:,0,:]
+        cls = self.bert(
+            claim_input_ids,
+            attention_mask=claim_attn_masks,
+        )[0][:, 0, :]
         return self.predictor(torch.cat((cls, emotion_vector), dim=1))
 
     def predict_evidence(self, snippets):
-        snippet_input_ids, snippet_token_type_ids, snippet_attention_mask = self.encode_snippets(snippets)
-        snippet_cls = self.bert(snippet_input_ids, token_type_ids=snippet_token_type_ids, attention_mask=snippet_attention_mask)[0][:,0,:]
+        snippet_input_ids, snippet_token_type_ids, snippet_attention_mask = self.encode_snippets(
+            snippets)
+        snippet_cls = self.bert(snippet_input_ids,
+                                token_type_ids=snippet_token_type_ids,
+                                attention_mask=snippet_attention_mask)[0][:,
+                                                                          0, :]
         snippet_cls = snippet_cls.view(len(snippets), 10, 768)
 
         tmp = self.attn_score(snippet_cls)
@@ -100,10 +139,15 @@ class MyBertModel(BertPreTrainedModel):
 
     def predict_claim_evidence(self, claims, snippets):
         claim_input_ids, claim_attn_masks = self.encode_claims(claims)
-        claim_cls = self.bert(claim_input_ids, attention_mask=claim_attn_masks)[0][:, 0, :]
+        claim_cls = self.bert(claim_input_ids,
+                              attention_mask=claim_attn_masks)[0][:, 0, :]
 
-        snippet_input_ids, snippet_token_type_ids, snippet_attention_mask = self.encode_snippets_with_claims(snippets, claims)
-        snippet_cls = self.bert(snippet_input_ids, token_type_ids=snippet_token_type_ids, attention_mask=snippet_attention_mask)[0][:,0,:]
+        snippet_input_ids, snippet_token_type_ids, snippet_attention_mask = self.encode_snippets_with_claims(
+            snippets, claims)
+        snippet_cls = self.bert(snippet_input_ids,
+                                token_type_ids=snippet_token_type_ids,
+                                attention_mask=snippet_attention_mask)[0][:,
+                                                                          0, :]
         snippet_cls = snippet_cls.view(len(claims), 10, 768)
 
         tmp = self.attn_score(snippet_cls)
@@ -119,12 +163,15 @@ class MyBertModel(BertPreTrainedModel):
         emo_lexi = torch.zeros(len(texts), 8)
         emo_int = torch.zeros(len(texts), 8)
         for index, text in enumerate(texts):
-            tokens = text.lower().translate(str.maketrans('', '', string.punctuation)).strip().split()
+            tokens = text.lower().translate(
+                str.maketrans('', '', string.punctuation)).strip().split()
             for word in tokens:
                 if word in self.LEXICON:
                     #print(word, self.LEXICON[word][0], self.LEXICON[word][1])
-                    emo_lexi[index, self.EMOTION_INDICES[self.LEXICON[word][0]]] += 1
-                    emo_int[index, self.EMOTION_INDICES[self.LEXICON[word][0]]] += self.LEXICON[word][1]
+                    emo_lexi[index,
+                             self.EMOTION_INDICES[self.LEXICON[word][0]]] += 1
+                    emo_int[index, self.EMOTION_INDICES[
+                        self.LEXICON[word][0]]] += self.LEXICON[word][1]
 
         if self.emocred_type == 'EMO_INT':
             return emo_int
