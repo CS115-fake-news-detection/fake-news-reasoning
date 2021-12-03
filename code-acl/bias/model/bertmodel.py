@@ -174,6 +174,6 @@ class MyBertModel(BertPreTrainedModel):
                         self.LEXICON[word][0]]] += self.LEXICON[word][1]
 
         if self.emocred_type == 'EMO_INT':
-            return emo_int
+            return emo_int.to(DEVICE)
         elif self.emocred_type == 'EMO_LEXI':
-            return emo_lexi
+            return emo_lexi.to(DEVICE)
