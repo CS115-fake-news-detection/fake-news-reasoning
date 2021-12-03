@@ -4,11 +4,15 @@ from parameters import BERT_MODEL_PATH, CLAIM_ONLY, CLAIM_AND_EVIDENCE, EVIDENCE
 from torch.nn import functional as F
 import torch.nn as nn
 import torch
+import string
+import pandas as pd
 
 class MyBertModel(BertPreTrainedModel):
     def __init__(self, config, labelnum, maxlen=200, input_type=CLAIM_ONLY):
 
         super(MyBertModel, self).__init__(config)
+
+        self.emocred_type = 'EMO_INT'
         self.input_type = input_type
         self.maxlen = maxlen
 
@@ -17,13 +21,21 @@ class MyBertModel(BertPreTrainedModel):
         self.bert = BertModel(config)
 
         if input_type == CLAIM_ONLY or input_type == EVIDENCE_ONLY:
-            self.predictor = nn.Linear(768, labelnum)
+            self.predictor = nn.Linear(768 + 8, labelnum)
         elif input_type == CLAIM_AND_EVIDENCE:
-            self.predictor = nn.Linear(768 * 2, labelnum)
+            self.predictor = nn.Linear(768 * 2 + 16, labelnum)
 
         if self.input_type != CLAIM_ONLY:
             self.attn_score = nn.Linear(768, 1)
             self.softmax = nn.Softmax(dim=1)
+
+        self.emolinear1 = nn.Linear(8, 8)
+
+        lex_path = "model/NRC-Emotion-Intensity-Lexicon-v1.txt"
+        df_lex = pd.read_csv(lex_path, sep='\t', index_col=False)
+
+        self.LEXICON = {k:v for (k,v) in zip(df_lex['word'], zip(df_lex['emotion'], df_lex['emotion-intensity-score']))}
+        self.EMOTION_INDICES = {'anger': 0, 'fear': 1, 'joy': 2, 'sadness': 3, 'disgust': 4, 'anticipation': 5, 'trust': 6, 'surprise': 7}
 
         self.init_weights()
 
@@ -69,8 +81,10 @@ class MyBertModel(BertPreTrainedModel):
 
     def predict_claim(self, claims):
         claim_input_ids, claim_attn_masks = self.encode_claims(claims)
+        emotion_vector = emocred(claims, 'EMO_INT')
+        emotion_vector = self.emolinear1(emotion_vector)
         cls = self.bert(claim_input_ids, attention_mask=claim_attn_masks, )[0][:,0,:]
-        return self.predictor(cls)
+        return self.predictor(torch.cat((cls, emotion_vector), dim=1))
 
     def predict_evidence(self, snippets):
         snippet_input_ids, snippet_token_type_ids, snippet_attention_mask = self.encode_snippets(snippets)
@@ -100,3 +114,19 @@ class MyBertModel(BertPreTrainedModel):
         claim_snippet_cls = torch.cat((claim_cls, snippet_cls), dim=-1)
 
         return self.predictor(claim_snippet_cls)
+
+    def emocred(self, texts, emocred_type):
+        emo_lexi = torch.zeros(len(texts), 8)
+        emo_int = torch.zeros(len(texts), 8)
+        for index, text in enumerate(texts):
+            tokens = text.lower().translate(str.maketrans('', '', string.punctuation)).strip().split()
+            for word in tokens:
+                if word in self.LEXICON:
+                    #print(word, self.LEXICON[word][0], self.LEXICON[word][1])
+                    emo_lexi[index, self.EMOTION_INDICES[self.LEXICON[word][0]]] += 1
+                    emo_int[index, self.EMOTION_INDICES[self.LEXICON[word][0]]] += self.LEXICON[word][1]
+
+        if self.emocred_type == 'EMO_INT':
+            return emo_int
+        elif self.emocred_type == 'EMO_LEXI':
+            return emo_lexi
