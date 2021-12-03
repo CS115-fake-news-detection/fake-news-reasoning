@@ -142,6 +142,7 @@ class MyBertModel(BertPreTrainedModel):
         attn_weights = self.softmax(tmp)
         snippet_cls = snippet_cls * attn_weights
         snippet_cls = torch.sum(snippet_cls, dim=1)
+        emotion_vectors = torch.sum(emotion_vectors, dim=1)
 
         print(f"SNIPPET SHAPE: {snippet_cls.shape}")
         print(f"EMOTION SHAPE: {emotion_vectors.shape}")
