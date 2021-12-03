@@ -113,7 +113,7 @@ class MyBertModel(BertPreTrainedModel):
 
     def predict_claim(self, claims):
         claim_input_ids, claim_attn_masks = self.encode_claims(claims)
-        emotion_vector = self.emocred(claims, 'EMO_INT')
+        emotion_vector = self.emocred(claims, self.emocred_type)
         emotion_vector = self.emolinear1(emotion_vector)
         cls = self.bert(
             claim_input_ids,
@@ -122,6 +122,9 @@ class MyBertModel(BertPreTrainedModel):
         return self.predictor(torch.cat((cls, emotion_vector), dim=1))
 
     def predict_evidence(self, snippets):
+        emotion_vector = self.emocred(snippets, self.emocred_type)
+        emotion_vector = self.emolinear1(emotion_vector)
+
         snippet_input_ids, snippet_token_type_ids, snippet_attention_mask = self.encode_snippets(
             snippets)
         snippet_cls = self.bert(snippet_input_ids,
@@ -135,7 +138,7 @@ class MyBertModel(BertPreTrainedModel):
         snippet_cls = snippet_cls * attn_weights
         snippet_cls = torch.sum(snippet_cls, dim=1)
 
-        return self.predictor(snippet_cls)
+        return self.predictor(torch.cat((snippet_cls, emotion_vector), dim=1))
 
     def predict_claim_evidence(self, claims, snippets):
         claim_input_ids, claim_attn_masks = self.encode_claims(claims)
