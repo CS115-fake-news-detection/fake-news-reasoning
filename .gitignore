@@ -7,3 +7,6 @@ code-acl/bias/results/lstm_claim_and_evidence
 
 # Ignore submodule
 src/hpsklearn
+
+# Ignore data
+code-acl/bias/sorted.uk.word.unigrams
