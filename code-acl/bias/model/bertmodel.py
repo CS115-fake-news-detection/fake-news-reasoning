@@ -151,9 +151,6 @@ class MyBertModel(BertPreTrainedModel):
         emotion_vectors = emotion_vectors * emo_attn_weights
         emotion_vectors = torch.sum(emotion_vectors, dim=1)
 
-        print(f"SNIPPET SHAPE: {snippet_cls.shape}")
-        print(f"EMOTION SHAPE after sum: {emotion_vectors.shape}")
-
         return self.predictor(torch.cat((snippet_cls, emotion_vectors),
                                         dim=-1))
 
