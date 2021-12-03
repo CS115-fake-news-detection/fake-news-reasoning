@@ -30,6 +30,7 @@ class MyBertModel(BertPreTrainedModel):
             self.attn_score = nn.Linear(768, 1)
             self.softmax = nn.Softmax(dim=1)
 
+        self.emo_attn_score = nn.Linear(8, 1)
         self.emolinear1 = nn.Linear(8, 8)
 
         lex_path = "model/NRC-Emotion-Intensity-Lexicon-v1.txt"
@@ -140,12 +141,18 @@ class MyBertModel(BertPreTrainedModel):
 
         tmp = self.attn_score(snippet_cls)
         attn_weights = self.softmax(tmp)
+
+        emp_tmp = self.emo_attn_score(emotion_vectors)
+        emo_attn_weights = self.softmax(emp_tmp)
+
         snippet_cls = snippet_cls * attn_weights
         snippet_cls = torch.sum(snippet_cls, dim=1)
+
+        emotion_vectors = emotion_vectors * emo_attn_weights
         emotion_vectors = torch.sum(emotion_vectors, dim=1)
 
         print(f"SNIPPET SHAPE: {snippet_cls.shape}")
-        print(f"EMOTION SHAPE: {emotion_vectors.shape}")
+        print(f"EMOTION SHAPE after sum: {emotion_vectors.shape}")
 
         return self.predictor(torch.cat((snippet_cls, emotion_vectors),
                                         dim=-1))
