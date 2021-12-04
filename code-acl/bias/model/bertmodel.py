@@ -118,8 +118,7 @@ class MyBertModel(BertPreTrainedModel):
         emotion_vector = self.emolinear1(emotion_vector)
         cls = self.bert(
             claim_input_ids,
-            attention_mask=claim_attn_masks,
-        )[0][:, 0, :]
+            attention_mask=claim_attn_masks,)[0][:, 0, :]
         return self.predictor(torch.cat((cls, emotion_vector), dim=1))
 
     def predict_evidence(self, snippets):
@@ -135,8 +134,7 @@ class MyBertModel(BertPreTrainedModel):
             snippets)
         snippet_cls = self.bert(snippet_input_ids,
                                 token_type_ids=snippet_token_type_ids,
-                                attention_mask=snippet_attention_mask)[0][:,
-                                                                          0, :]
+                                attention_mask=snippet_attention_mask)[0][:, 0, :]
         snippet_cls = snippet_cls.view(len(snippets), 10, 768)
 
         tmp = self.attn_score(snippet_cls)
@@ -151,28 +149,48 @@ class MyBertModel(BertPreTrainedModel):
         emotion_vectors = emotion_vectors * emo_attn_weights
         emotion_vectors = torch.sum(emotion_vectors, dim=1)
 
-        return self.predictor(torch.cat((snippet_cls, emotion_vectors),
-                                        dim=-1))
+        return self.predictor(torch.cat((snippet_cls, emotion_vectors), dim=-1))
 
     def predict_claim_evidence(self, claims, snippets):
+        # Claims
         claim_input_ids, claim_attn_masks = self.encode_claims(claims)
-        claim_cls = self.bert(claim_input_ids,
-                              attention_mask=claim_attn_masks)[0][:, 0, :]
+        emotion_vector = self.emocred(claims, self.emocred_type)
+        emotion_vector = self.emolinear1(emotion_vector)
+        claim_cls = self.bert(
+            claim_input_ids,
+            attention_mask=claim_attn_masks)[0][:, 0, :]
+
+        # Evidence
+        emotion_vectors = torch.zeros(len(snippets), 10, 8).to(DEVICE)
+
+        for i, snippet in enumerate(snippets):
+            snippet = snippet.tolist()
+            emotion_vector_evidence = self.emocred(snippet, self.emocred_type)
+            emotion_vectors[i] = emotion_vector_evidence
 
         snippet_input_ids, snippet_token_type_ids, snippet_attention_mask = self.encode_snippets_with_claims(
             snippets, claims)
         snippet_cls = self.bert(snippet_input_ids,
                                 token_type_ids=snippet_token_type_ids,
-                                attention_mask=snippet_attention_mask)[0][:,
-                                                                          0, :]
+                                attention_mask=snippet_attention_mask)[0][:,0, :]
         snippet_cls = snippet_cls.view(len(claims), 10, 768)
 
         tmp = self.attn_score(snippet_cls)
         attn_weights = self.softmax(tmp)
+
+        emp_tmp = self.emo_attn_score(emotion_vectors)
+        emo_attn_weights = self.softmax(emp_tmp)
+
         snippet_cls *= attn_weights
         snippet_cls = torch.sum(snippet_cls, dim=1)
 
-        claim_snippet_cls = torch.cat((claim_cls, snippet_cls), dim=-1)
+        emotion_vectors = emotion_vectors * emo_attn_weights
+        emotion_vectors = torch.sum(emotion_vectors, dim=1)
+
+
+        claim_snippet_cls = torch.cat((torch.cat((claim_cls, emotion_vector),
+                                dim=1), torch.cat((snippet_cls, 
+                                emotion_vectors), dim=-1)), dim=-1)
 
         return self.predictor(claim_snippet_cls)
 
@@ -184,13 +202,43 @@ class MyBertModel(BertPreTrainedModel):
                 str.maketrans('', '', string.punctuation)).strip().split()
             for word in tokens:
                 if word in self.LEXICON:
-                    #print(word, self.LEXICON[word][0], self.LEXICON[word][1])
-                    emo_lexi[index,
-                             self.EMOTION_INDICES[self.LEXICON[word][0]]] += 1
-                    emo_int[index, self.EMOTION_INDICES[
-                        self.LEXICON[word][0]]] += self.LEXICON[word][1]
+                    emo_lexi[index, self.EMOTION_INDICES[self.LEXICON[word][0]]] += 1
+                    emo_int[index, self.EMOTION_INDICES[self.LEXICON[word][0]]] += self.LEXICON[word][1]
 
         if self.emocred_type == 'EMO_INT':
             return emo_int.to(DEVICE)
         elif self.emocred_type == 'EMO_LEXI':
             return emo_lexi.to(DEVICE)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
