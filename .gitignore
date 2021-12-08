@@ -16,5 +16,8 @@ code/bias/model/__*
 # Ignore submodule
 src/hpsklearn
 
+# Etc.
+.pylintrc
+
 # Ignore data
 code-acl/bias/sorted.uk.word.unigrams
