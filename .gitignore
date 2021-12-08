@@ -4,6 +4,14 @@
 multi_fc_publicdata
 code-acl/bias/results
 code-acl/bias/results/lstm_claim_and_evidence
+code/figs
+code/bias/results
+
+# Ignore temp files
+code/bias/.*
+code/bias/__*
+code/bias/model/.*
+code/bias/model/__*
 
 # Ignore submodule
 src/hpsklearn
