@@ -4,8 +4,8 @@
 multi_fc_publicdata
 code-acl/bias/results
 code-acl/bias/results/lstm_claim_and_evidence
-code/bias/figs
-code/bias/results
+code/bias/figs/*
+code/bias/results/*
 
 # Ignore temp files
 code/bias/.*
