@@ -3,7 +3,7 @@
 
 Ian Kelk, Wee Li Yi, and Benjamin Basseri 
  <br>
-1. Download the jupyter notebook at code/bias/model_2.ipynb or from this link: https://www.dropbox.com/s/mtxck4nkg2akd85/main_2.ipynb?dl=0
+1. Download the jupyter notebook at code/bias/model.ipynb or from this link: https://www.dropbox.com/s/mtxck4nkg2akd85/main_2.ipynb?dl=0
 
 2. Open the notebook in Google Colab and run
 	
