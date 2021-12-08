@@ -1,5 +1,5 @@
 
-# Automatic Fake News Detection: Automatic Fake News Detection: Are current models “doing their own research” using search engines?
+# Automatic Fake News Detection: Are current models fact-checking or gut-checking? 
 
 Ian Kelk, Wee Yi Lee, Jonathan Bourne, and Benjamin Basseri 
  <br>
