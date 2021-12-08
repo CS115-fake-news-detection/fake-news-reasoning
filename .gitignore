@@ -4,8 +4,11 @@
 multi_fc_publicdata
 code-acl/bias/results
 code-acl/bias/results/lstm_claim_and_evidence
-code/bias/results/bert*
-code/bias/figs/*
+code/bias/figs/*.pdf
+code/bias/figs/*.zip
+code/bias/results/*.pkl
+# code/bias/results/bert*
+# code/bias/figs/*
 
 
 # Ignore temp files
